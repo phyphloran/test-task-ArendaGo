@@ -104,6 +104,12 @@ docker compose ps
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/api-docs`
 
+## Скриншоты
+
+| Docker Compose | Swagger UI |
+|---|---|
+| [![Docker Compose](pics/docker-compose.png)](https://github.com/phyphloran/test-task-ArendaGo/blob/main/pics/docker-compose.png) | [![Swagger UI](pics/swagger_pic.png)](https://github.com/phyphloran/test-task-ArendaGo/blob/main/pics/swagger_pic.png) |
+
 Остановка сервисов:
 
 ```bash
