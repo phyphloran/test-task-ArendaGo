@@ -80,6 +80,31 @@ class TaskControllerTest {
     }
 
     @Test
+    fun `POST api tasks should validate blank title`() {
+        mockMvc.perform(
+            post("/api/v1/tasks")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"title":"   ","description":"Monthly financial report"}""")
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.validationErrors.title").exists())
+    }
+
+    @Test
+    fun `GET api tasks by id should return 200 when task exists`() {
+        whenever(taskService.getTaskById(1L)).thenReturn(Mono.just(taskResponse(1L, TaskStatus.NEW)))
+
+        val result = mockMvc.perform(get("/api/v1/tasks/1"))
+            .andExpect(request().asyncStarted())
+            .andReturn()
+
+        mockMvc.perform(asyncDispatch(result))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.status").value("NEW"))
+    }
+
+    @Test
     fun `GET api tasks by id should return 404 when task missing`() {
         whenever(taskService.getTaskById(404L)).thenReturn(Mono.error(TaskNotFoundException(404L)))
 
@@ -124,6 +149,27 @@ class TaskControllerTest {
     }
 
     @Test
+    fun `GET api tasks should validate min page`() {
+        mockMvc.perform(get("/api/v1/tasks?page=-1&size=10"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("Request validation failed"))
+    }
+
+    @Test
+    fun `GET api tasks should validate min size`() {
+        mockMvc.perform(get("/api/v1/tasks?page=0&size=0"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("Request validation failed"))
+    }
+
+    @Test
+    fun `GET api tasks should return 400 for invalid status enum`() {
+        mockMvc.perform(get("/api/v1/tasks?page=0&size=10&status=INVALID"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("Invalid request format"))
+    }
+
+    @Test
     fun `PATCH api tasks status should return updated task`() {
         whenever(taskService.updateStatus(any(), any())).thenReturn(Mono.just(taskResponse(1L, TaskStatus.DONE)))
 
@@ -139,6 +185,28 @@ class TaskControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.status").value("DONE"))
+    }
+
+    @Test
+    fun `PATCH api tasks status should validate missing status`() {
+        mockMvc.perform(
+            patch("/api/v1/tasks/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{}""")
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.validationErrors.status").exists())
+    }
+
+    @Test
+    fun `PATCH api tasks status should return 400 for invalid status enum`() {
+        mockMvc.perform(
+            patch("/api/v1/tasks/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"status":"INVALID"}""")
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("Invalid request format"))
     }
 
     @Test
@@ -164,6 +232,19 @@ class TaskControllerTest {
         mockMvc.perform(asyncDispatch(result))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.message").value("Task with id=404 not found"))
+    }
+
+    @Test
+    fun `GET api tasks by id should return 500 on unexpected error`() {
+        whenever(taskService.getTaskById(500L)).thenReturn(Mono.error(RuntimeException("boom")))
+
+        val result = mockMvc.perform(get("/api/v1/tasks/500"))
+            .andExpect(request().asyncStarted())
+            .andReturn()
+
+        mockMvc.perform(asyncDispatch(result))
+            .andExpect(status().isInternalServerError)
+            .andExpect(jsonPath("$.message").value("Unexpected error occurred. Please try again later."))
     }
 
     private fun taskResponse(id: Long, status: TaskStatus): TaskResponse {

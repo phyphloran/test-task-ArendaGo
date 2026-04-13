@@ -79,6 +79,28 @@ class TaskServiceImplTest {
     }
 
     @Test
+    fun `updateStatus should return error when task is missing`() {
+        whenever(taskRepository.updateStatus(777L, TaskStatus.DONE)).thenReturn(null)
+
+        StepVerifier.create(taskService.updateStatus(777L, UpdateTaskStatusRequest(TaskStatus.DONE)))
+            .expectErrorSatisfies { error ->
+                assertThat(error).isInstanceOf(TaskNotFoundException::class.java)
+                assertThat(error.message).isEqualTo("Task with id=777 not found")
+            }
+            .verify()
+    }
+
+    @Test
+    fun `updateStatus should return error when status is null`() {
+        StepVerifier.create(taskService.updateStatus(1L, UpdateTaskStatusRequest(null)))
+            .expectErrorSatisfies { error ->
+                assertThat(error).isInstanceOf(IllegalArgumentException::class.java)
+                assertThat(error.message).isEqualTo("status is required")
+            }
+            .verify()
+    }
+
+    @Test
     fun `deleteTask should complete successfully`() {
         whenever(taskRepository.deleteById(1L)).thenReturn(true)
 
@@ -116,6 +138,20 @@ class TaskServiceImplTest {
                 assertThat(response.totalPages).isEqualTo(3)
                 assertThat(response.page).isEqualTo(0)
                 assertThat(response.size).isEqualTo(2)
+            }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `getTasks should return zero pages when no elements`() {
+        whenever(taskRepository.findAll(0, 10, null)).thenReturn(emptyList())
+        whenever(taskRepository.countAll(null)).thenReturn(0L)
+
+        StepVerifier.create(taskService.getTasks(page = 0, size = 10, status = null))
+            .assertNext { response ->
+                assertThat(response.content).isEmpty()
+                assertThat(response.totalElements).isEqualTo(0L)
+                assertThat(response.totalPages).isEqualTo(0)
             }
             .verifyComplete()
     }

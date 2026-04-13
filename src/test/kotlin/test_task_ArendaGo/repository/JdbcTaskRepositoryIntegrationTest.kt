@@ -70,4 +70,11 @@ class JdbcTaskRepositoryIntegrationTest {
         assertThat(deleted).isTrue()
         assertThat(found).isNull()
     }
+
+    @Test
+    fun `deleteById should return false for missing task`() {
+        val deleted = taskRepository.deleteById(99999L)
+
+        assertThat(deleted).isFalse()
+    }
 }
