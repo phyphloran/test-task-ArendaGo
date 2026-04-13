@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.HandlerMethodValidationException
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 import org.slf4j.LoggerFactory
 import test_task_ArendaGo.dto.ErrorResponse
 import java.time.LocalDateTime
@@ -99,6 +100,17 @@ class GlobalExceptionHandler {
     ): ErrorResponse = errorResponse(
         status = HttpStatus.BAD_REQUEST,
         message = "Invalid request format",
+        path = request.requestURI
+    )
+
+    @ExceptionHandler(NoResourceFoundException::class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    fun handleNoResourceFound(
+        ex: NoResourceFoundException,
+        request: HttpServletRequest
+    ): ErrorResponse = errorResponse(
+        status = HttpStatus.NOT_FOUND,
+        message = ex.message ?: "Resource not found",
         path = request.requestURI
     )
 
