@@ -4,11 +4,13 @@ import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.jdbc.support.GeneratedKeyHolder
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 import test_task_ArendaGo.model.Task
 import test_task_ArendaGo.model.TaskStatus
 import java.time.LocalDateTime
 
 @Repository
+@Suppress("SqlNoDataSourceInspection", "SqlResolve")
 class JdbcTaskRepository(
     private val jdbcClient: JdbcClient
 ) : TaskRepository {
@@ -24,6 +26,7 @@ class JdbcTaskRepository(
         )
     }
 
+    @Transactional
     override fun save(title: String, description: String?): Task {
         val now = LocalDateTime.now()
         val keyHolder = GeneratedKeyHolder()
@@ -47,6 +50,7 @@ class JdbcTaskRepository(
         return findById(id) ?: throw IllegalStateException("Created task with id=$id was not found")
     }
 
+    @Transactional(readOnly = true)
     override fun findById(id: Long): Task? =
         jdbcClient.sql(
             """
@@ -60,6 +64,7 @@ class JdbcTaskRepository(
             .optional()
             .orElse(null)
 
+    @Transactional(readOnly = true)
     override fun findAll(page: Int, size: Int, status: TaskStatus?): List<Task> {
         val offset = page * size
 
@@ -94,6 +99,7 @@ class JdbcTaskRepository(
         }
     }
 
+    @Transactional(readOnly = true)
     override fun countAll(status: TaskStatus?): Long =
         if (status == null) {
             jdbcClient.sql("SELECT COUNT(*) FROM tasks")
@@ -106,6 +112,7 @@ class JdbcTaskRepository(
                 .single()
         }
 
+    @Transactional
     override fun updateStatus(id: Long, status: TaskStatus): Task? {
         val affected = jdbcClient.sql(
             """
@@ -123,6 +130,7 @@ class JdbcTaskRepository(
         return if (affected == 0) null else findById(id)
     }
 
+    @Transactional
     override fun deleteById(id: Long): Boolean =
         jdbcClient.sql("DELETE FROM tasks WHERE id = :id")
             .param("id", id)

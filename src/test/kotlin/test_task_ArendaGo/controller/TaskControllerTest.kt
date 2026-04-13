@@ -117,6 +117,13 @@ class TaskControllerTest {
     }
 
     @Test
+    fun `GET api tasks should validate max size`() {
+        mockMvc.perform(get("/api/v1/tasks?page=0&size=1000"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("Request validation failed"))
+    }
+
+    @Test
     fun `PATCH api tasks status should return updated task`() {
         whenever(taskService.updateStatus(any(), any())).thenReturn(Mono.just(taskResponse(1L, TaskStatus.DONE)))
 
@@ -144,6 +151,19 @@ class TaskControllerTest {
 
         mockMvc.perform(asyncDispatch(result))
             .andExpect(status().isNoContent)
+    }
+
+    @Test
+    fun `DELETE api tasks should return 404 when task is missing`() {
+        whenever(taskService.deleteTask(404L)).thenReturn(Mono.error(TaskNotFoundException(404L)))
+
+        val result = mockMvc.perform(delete("/api/v1/tasks/404"))
+            .andExpect(request().asyncStarted())
+            .andReturn()
+
+        mockMvc.perform(asyncDispatch(result))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.message").value("Task with id=404 not found"))
     }
 
     private fun taskResponse(id: Long, status: TaskStatus): TaskResponse {

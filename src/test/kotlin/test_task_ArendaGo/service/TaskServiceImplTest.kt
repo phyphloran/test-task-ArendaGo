@@ -9,6 +9,7 @@ import reactor.test.StepVerifier
 import test_task_ArendaGo.dto.CreateTaskRequest
 import test_task_ArendaGo.dto.UpdateTaskStatusRequest
 import test_task_ArendaGo.exception.TaskNotFoundException
+import test_task_ArendaGo.mapper.TaskMapper
 import test_task_ArendaGo.model.Task
 import test_task_ArendaGo.model.TaskStatus
 import test_task_ArendaGo.repository.TaskRepository
@@ -17,7 +18,8 @@ import java.time.LocalDateTime
 class TaskServiceImplTest {
 
     private val taskRepository: TaskRepository = mock()
-    private val taskService: TaskService = TaskServiceImpl(taskRepository)
+    private val taskMapper = TaskMapper()
+    private val taskService: TaskService = TaskServiceImpl(taskRepository, taskMapper)
 
     @Test
     fun `createTask should create task successfully`() {
@@ -84,6 +86,18 @@ class TaskServiceImplTest {
             .verifyComplete()
 
         verify(taskRepository).deleteById(1L)
+    }
+
+    @Test
+    fun `deleteTask should return error when task is missing`() {
+        whenever(taskRepository.deleteById(42L)).thenReturn(false)
+
+        StepVerifier.create(taskService.deleteTask(42L))
+            .expectErrorSatisfies { error ->
+                assertThat(error).isInstanceOf(TaskNotFoundException::class.java)
+                assertThat(error.message).isEqualTo("Task with id=42 not found")
+            }
+            .verify()
     }
 
     @Test

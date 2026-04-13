@@ -1,6 +1,7 @@
 package test_task_ArendaGo.controller
 
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -37,7 +38,10 @@ class TaskController(
     @GetMapping
     fun getTasks(
         @RequestParam @Min(value = 0, message = "page must be >= 0") page: Int,
-        @RequestParam @Min(value = 1, message = "size must be >= 1") size: Int,
+        @RequestParam
+        @Min(value = 1, message = "size must be >= 1")
+        @Max(value = 100, message = "size must be <= 100")
+        size: Int,
         @RequestParam(required = false) status: TaskStatus?
     ): Mono<PageResponse<TaskResponse>> = taskService.getTasks(page, size, status)
 

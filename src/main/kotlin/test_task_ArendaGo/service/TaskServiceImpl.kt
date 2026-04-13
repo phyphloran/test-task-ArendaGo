@@ -8,14 +8,15 @@ import test_task_ArendaGo.dto.PageResponse
 import test_task_ArendaGo.dto.TaskResponse
 import test_task_ArendaGo.dto.UpdateTaskStatusRequest
 import test_task_ArendaGo.exception.TaskNotFoundException
-import test_task_ArendaGo.model.Task
+import test_task_ArendaGo.mapper.TaskMapper
 import test_task_ArendaGo.model.TaskStatus
 import test_task_ArendaGo.repository.TaskRepository
 import kotlin.math.ceil
 
 @Service
 class TaskServiceImpl(
-    private val taskRepository: TaskRepository
+    private val taskRepository: TaskRepository,
+    private val taskMapper: TaskMapper
 ) : TaskService {
 
     override fun createTask(request: CreateTaskRequest): Mono<TaskResponse> =
@@ -24,13 +25,13 @@ class TaskServiceImpl(
                 title = request.title,
                 description = request.description?.trim()?.ifBlank { null }
             )
-            saved.toResponse()
+            taskMapper.toResponse(saved)
         }.subscribeOn(Schedulers.boundedElastic())
 
     override fun getTaskById(id: Long): Mono<TaskResponse> =
         Mono.fromCallable {
             val task = taskRepository.findById(id) ?: throw TaskNotFoundException(id)
-            task.toResponse()
+            taskMapper.toResponse(task)
         }.subscribeOn(Schedulers.boundedElastic())
 
     override fun getTasks(page: Int, size: Int, status: TaskStatus?): Mono<PageResponse<TaskResponse>> =
@@ -39,8 +40,8 @@ class TaskServiceImpl(
             val totalElements = taskRepository.countAll(status)
             val totalPages = if (totalElements == 0L) 0 else ceil(totalElements.toDouble() / size).toInt()
 
-            PageResponse(
-                content = tasks.map { it.toResponse() },
+            taskMapper.toPageResponse(
+                tasks = tasks,
                 page = page,
                 size = size,
                 totalElements = totalElements,
@@ -52,21 +53,14 @@ class TaskServiceImpl(
         Mono.fromCallable {
             val status = requireNotNull(request.status) { "status is required" }
             val updated = taskRepository.updateStatus(id, status) ?: throw TaskNotFoundException(id)
-            updated.toResponse()
+            taskMapper.toResponse(updated)
         }.subscribeOn(Schedulers.boundedElastic())
 
     override fun deleteTask(id: Long): Mono<Void> =
         Mono.fromCallable {
-            taskRepository.deleteById(id)
+            val deleted = taskRepository.deleteById(id)
+            if (!deleted) {
+                throw TaskNotFoundException(id)
+            }
         }.subscribeOn(Schedulers.boundedElastic()).then()
-
-    private fun Task.toResponse(): TaskResponse =
-        TaskResponse(
-            id = id,
-            title = title,
-            description = description,
-            status = status,
-            createdAt = createdAt,
-            updatedAt = updatedAt
-        )
 }
